@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Sparkles, Upload, Loader2, Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StickerPreview } from "@/components/StickerPreview";
+import { GrowthSections } from "@/components/GrowthSections";
 import { QUANTITIES, SIZES, naira, quoteTotal, type Shape } from "@/lib/pricing";
+import type { Template } from "@/lib/growth-content";
 import { streamImage } from "@/lib/stream-image";
 import { createOrder } from "@/lib/orders.functions";
 import { waLink } from "@/lib/whatsapp";
@@ -46,6 +48,22 @@ function Studio() {
   const fileRef = useRef<HTMLInputElement>(null);
   const submit = useServerFn(createOrder);
 
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("sleekblue-contact") ?? "null");
+      if (saved && typeof saved === "object") setForm((current) => ({ ...current, name: saved.name ?? "", phone: saved.phone ?? "", email: saved.email ?? "" }));
+      const params = new URLSearchParams(window.location.search);
+      const presetIdea = params.get("idea") || (params.get("brand") ? `Logo for ${params.get("brand")}` : "");
+      if (presetIdea) setIdea(presetIdea.slice(0, 500));
+      const presetShape = params.get("shape") as Shape;
+      if (SHAPES.some((item) => item.id === presetShape)) pickShape(presetShape);
+      const presetQty = Number(params.get("qty"));
+      if (QUANTITIES.some((item) => item === presetQty)) setQty(presetQty);
+    } catch {
+      // Private browsing and malformed campaign links should never break the studio.
+    }
+  }, []);
+
   const size = SIZES.find((s) => s.id === sizeId)!;
   const total = useMemo(() => quoteTotal(size.widthMm, size.heightMm, qty), [size, qty]);
   const quoteMessage = `Hi Sleekblue, I need a custom sticker quote. Shape: ${shape}. Size: ${size.label}. Quantity: ${qty}.`;
@@ -55,6 +73,17 @@ function Studio() {
     setShape(s);
     const first = SIZES.find((x) => x.shape === s && x.hint === "Most popular") ?? SIZES.find((x) => x.shape === s)!;
     setSizeId(first.id);
+  }
+
+  function chooseTemplate(template: Template) {
+    pickShape(template.shape);
+    setIdea(template.idea);
+    document.getElementById("design")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function choosePackage(quantity: (typeof QUANTITIES)[number]) {
+    setQty(quantity);
+    document.getElementById("size")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function generate() {
@@ -81,6 +110,7 @@ function Studio() {
     if (!total) return;
     setPaying(true);
     try {
+      try { localStorage.setItem("sleekblue-contact", JSON.stringify({ name: form.name, phone: form.phone, email: form.email })); } catch { /* optional convenience only */ }
       const res = await submit({ data: { sizeId, quantity: qty, ...form, notes: form.notes || undefined, prompt: idea || undefined, design, origin: window.location.origin } });
       window.location.href = res.authorizationUrl;
     } catch (err) {
@@ -134,7 +164,7 @@ function Studio() {
         </section>
 
         {/* 2. Size & quantity */}
-        <section className="rounded-3xl bg-card p-5 shadow-sticker">
+        <section id="size" className="rounded-3xl bg-card p-5 shadow-sticker">
           <Step n={2} title="Size & quantity" done />
           <div className="mt-4 grid grid-cols-2 gap-2">
             {SIZES.filter((s) => s.shape === shape).map((s) => (
@@ -168,6 +198,8 @@ function Studio() {
             <Input placeholder="Delivery address or notes (optional)" className="h-12 rounded-xl" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </section>
+
+        <GrowthSections quoteUrl={quoteUrl} onTemplate={chooseTemplate} onPackage={choosePackage} />
 
         <p className="pb-2 text-center text-xs text-muted-foreground">
           {quoteUrl && <a href={quoteUrl} target="_blank" rel="noreferrer" className="mr-3 font-semibold text-primary hover:underline">Questions? Chat on WhatsApp</a>}
