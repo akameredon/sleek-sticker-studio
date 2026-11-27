@@ -9,6 +9,7 @@ import { StickerPreview } from "@/components/StickerPreview";
 import { QUANTITIES, SIZES, naira, quoteTotal, type Shape } from "@/lib/pricing";
 import { streamImage } from "@/lib/stream-image";
 import { createOrder } from "@/lib/orders.functions";
+import { waLink } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,6 +48,8 @@ function Studio() {
 
   const size = SIZES.find((s) => s.id === sizeId)!;
   const total = useMemo(() => quoteTotal(size.widthMm, size.heightMm, qty), [size, qty]);
+  const quoteMessage = `Hi Sleekblue, I need a custom sticker quote. Shape: ${shape}. Size: ${size.label}. Quantity: ${qty}.`;
+  const quoteUrl = waLink(quoteMessage);
 
   function pickShape(s: Shape) {
     setShape(s);
@@ -91,11 +94,17 @@ function Studio() {
       <header className="bg-hero px-5 pb-16 pt-6 text-primary-foreground">
         <div className="mx-auto flex max-w-xl items-center justify-between">
           <span className="font-display text-lg font-extrabold">sleekblue<span className="text-accent">.</span></span>
-          <span className="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold">Printed in 3 days</span>
+          <div className="flex items-center gap-2">
+            {quoteUrl && <a href={quoteUrl} target="_blank" rel="noreferrer" className="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold hover:bg-primary-foreground/25">Chat with us</a>}
+            <span className="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold">Printed in 3 days</span>
+          </div>
         </div>
         <div className="mx-auto mt-8 max-w-xl">
-          <h1 className="text-4xl font-extrabold leading-[1.05] sm:text-5xl">Your sticker,<br />ready in 60 seconds.</h1>
-          <p className="mt-3 text-primary-foreground/80">Design it, pick a size, pay. We print and deliver.</p>
+          <h1 className="text-4xl font-extrabold leading-[1.05] sm:text-5xl">Labels that make<br />your product sell.</h1>
+          <p className="mt-3 text-primary-foreground/80">Create your design, see the price, and order custom stickers for delivery in Owerri.</p>
+          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-primary-foreground/80">
+            <span>✓ Sharp, durable print</span><span>✓ Pay securely with Paystack</span><span>✓ Made for Nigerian brands</span>
+          </div>
         </div>
       </header>
 
@@ -146,6 +155,7 @@ function Studio() {
               );
             })}
           </div>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Need a different size or quantity? We’ll give you a quick quote on WhatsApp.</p>
         </section>
 
         {/* 3. Details */}
@@ -160,6 +170,7 @@ function Studio() {
         </section>
 
         <p className="pb-2 text-center text-xs text-muted-foreground">
+          {quoteUrl && <a href={quoteUrl} target="_blank" rel="noreferrer" className="mr-3 font-semibold text-primary hover:underline">Questions? Chat on WhatsApp</a>}
           <Link to="/auth" className="hover:underline">Shop owner</Link>
         </p>
 
@@ -170,9 +181,15 @@ function Studio() {
               <div className="text-xs text-muted-foreground">{qty} × {size.label} {shape === "round" ? "round" : ""}</div>
               <div className="font-display text-2xl font-extrabold">{total ? naira(total) : "Custom quote"}</div>
             </div>
-            <Button type="submit" variant="hero" size="xl" disabled={paying || generating || !total}>
-              {paying ? <Loader2 className="animate-spin" /> : <Lock />} Pay now
-            </Button>
+            {total ? (
+              <Button type="submit" variant="hero" size="xl" disabled={paying || generating}>
+                {paying ? <Loader2 className="animate-spin" /> : <Lock />} Pay now
+              </Button>
+            ) : quoteUrl ? (
+              <a href={quoteUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90">Get a quick quote</a>
+            ) : (
+              <Button type="submit" variant="hero" size="xl" disabled>Custom quote</Button>
+            )}
           </div>
         </div>
       </form>
